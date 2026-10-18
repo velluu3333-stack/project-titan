@@ -472,16 +472,69 @@ const legalDocsStore = [...initialLegalDocuments];
 const monetizationStore = { ...initialMonetization };
 
 export const DataRepository = {
+  // Session & Storage Helpers
+  saveActiveSession(user: Profile): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('titan_active_user', JSON.stringify(user));
+    }
+  },
+
+  getActiveSession(): Profile | null {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('titan_active_user');
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch {}
+      }
+    }
+    return null;
+  },
+
+  clearActiveSession(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('titan_active_user');
+    }
+  },
+
+  loadStoredUsers(): void {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('titan_registered_users');
+      if (raw) {
+        try {
+          const stored: Profile[] = JSON.parse(raw);
+          stored.forEach((sp) => {
+            const idx = profilesStore.findIndex((p) => p.email.toLowerCase() === sp.email.toLowerCase());
+            if (idx === -1) {
+              profilesStore.push(sp);
+            } else {
+              profilesStore[idx] = sp;
+            }
+          });
+        } catch {}
+      }
+    }
+  },
+
+  persistStoredUsers(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('titan_registered_users', JSON.stringify(profilesStore));
+    }
+  },
+
   // Profiles & Onboarding Approval Gate
   async getProfile(id: string): Promise<Profile | null> {
+    this.loadStoredUsers();
     return profilesStore.find((p) => p.id === id) || null;
   },
 
   async getAllProfiles(): Promise<Profile[]> {
+    this.loadStoredUsers();
     return [...profilesStore];
   },
 
   async getPendingApprovals(): Promise<Profile[]> {
+    this.loadStoredUsers();
     return profilesStore.filter((p) => p.status === 'pending_approval');
   },
 
@@ -521,6 +574,7 @@ export const DataRepository = {
       metadata: { email: user.email, role: assignedRole },
     });
 
+    this.persistStoredUsers();
     return { ...user };
   },
 
@@ -540,6 +594,7 @@ export const DataRepository = {
       metadata: { email: user.email },
     });
 
+    this.persistStoredUsers();
     return { ...user };
   },
 
@@ -560,6 +615,7 @@ export const DataRepository = {
       metadata: { email: user.email, status: nextStatus },
     });
 
+    this.persistStoredUsers();
     return { ...user };
   },
 
@@ -568,6 +624,7 @@ export const DataRepository = {
     email: string;
     requestedRole: OrgRole;
   }): Promise<Profile> {
+    this.loadStoredUsers();
     const existing = profilesStore.find((p) => p.email.toLowerCase() === params.email.toLowerCase());
     if (existing) {
       throw new Error('An account request with this email already exists.');
@@ -597,6 +654,7 @@ export const DataRepository = {
       metadata: { email: params.email, requestedRole: params.requestedRole },
     });
 
+    this.persistStoredUsers();
     return newProfile;
   },
 

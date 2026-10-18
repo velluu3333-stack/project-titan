@@ -2,30 +2,25 @@
 
 import React from 'react';
 import { useTenant } from './TenantContext';
-import { OrgRole } from '@/types/database';
 import {
-  Database,
   Search,
   Moon,
   Sun,
   UserCheck,
-  Crown,
   Menu,
+  LogOut,
 } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/data/repository';
 import Link from 'next/link';
 
 export function WorkspaceTopbar() {
   const {
     currentUser,
-    activeOrg,
     currentRole,
-    allProfiles,
     pendingApprovals,
     isDarkMode,
-    switchUserForDemo,
     toggleDarkMode,
     toggleMobileSidebar,
+    logoutUser,
     can,
   } = useTenant();
 
@@ -80,12 +75,6 @@ export function WorkspaceTopbar() {
           </Link>
         )}
 
-        {/* Backend Indicator (Desktop only) */}
-        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
-          <Database className="h-3 w-3 text-emerald-600" />
-          <span>{isSupabaseConfigured ? 'Supabase Live' : 'Local Relational Store'}</span>
-        </div>
-
         {/* Dark Mode Toggle */}
         <button
           onClick={toggleDarkMode}
@@ -96,42 +85,38 @@ export function WorkspaceTopbar() {
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-zinc-600" />}
         </button>
 
-        {/* User Persona Switcher (Hidden on narrow mobile, visible sm+) */}
-        <div className="hidden sm:flex items-center gap-1.5">
-          <Crown className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-          <select
-            value={currentUser.id}
-            onChange={(e) => switchUserForDemo(e.target.value)}
-            className="h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-zinc-900 cursor-pointer max-w-[130px] md:max-w-none truncate"
-            title="Switch User View"
-          >
-            {allProfiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name} ({p.requested_role?.replace('_', ' ') || 'Member'})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* User Pill */}
-        <div className="flex items-center gap-2 pl-1 sm:pl-2 sm:border-l border-zinc-200 dark:border-zinc-800">
+        {/* User Pill & Sign Out Button */}
+        <div className="flex items-center gap-2 pl-2 border-l border-zinc-200 dark:border-zinc-800">
           <div className="h-7 w-7 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center text-xs font-bold shadow-xs shrink-0">
-            {currentUser.full_name
-              .split(' ')
+            {currentUser?.full_name
+              ?.split(' ')
               .map((n) => n[0])
-              .join('')}
+              .join('') || 'U'}
           </div>
           <div className="text-left hidden md:block">
             <p className="text-xs font-semibold leading-none text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
-              {currentUser.full_name}
-              {currentUser.is_platform_admin && (
+              {currentUser?.full_name}
+              {currentUser?.is_platform_admin ? (
                 <span className="text-[9px] uppercase font-bold text-rose-600 bg-rose-50 dark:bg-rose-950 px-1 rounded">
                   Admin
                 </span>
+              ) : (
+                <span className="text-[9px] uppercase font-semibold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1 rounded">
+                  {currentRole.replace('_', ' ')}
+                </span>
               )}
             </p>
-            <p className="text-[10px] text-zinc-500 leading-tight truncate">{currentUser.email}</p>
+            <p className="text-[10px] text-zinc-500 leading-tight truncate">{currentUser?.email}</p>
           </div>
+
+          <button
+            onClick={logoutUser}
+            className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ml-1"
+            title="Sign Out"
+            aria-label="Sign Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

@@ -28,6 +28,8 @@ interface TenantContextValue {
   setMobileSidebarOpen: (open: boolean) => void;
   toggleMobileSidebar: () => void;
   closeMobileSidebar: () => void;
+  loginUser: (user: Profile) => void;
+  logoutUser: () => void;
   refreshTeamData: () => Promise<void>;
 }
 
@@ -136,6 +138,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setIsMobileSidebarOpen(false);
   };
 
+  const loginUser = (user: Profile) => {
+    DataRepository.saveActiveSession(user);
+    setCurrentUser(user);
+    if (user.requested_role) {
+      setCurrentRole(user.requested_role);
+    }
+  };
+
+  const logoutUser = () => {
+    DataRepository.clearActiveSession();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <TenantContext.Provider
       value={{
@@ -158,6 +175,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setMobileSidebarOpen: setIsMobileSidebarOpen,
         toggleMobileSidebar,
         closeMobileSidebar,
+        loginUser,
+        logoutUser,
         refreshTeamData,
       }}
     >

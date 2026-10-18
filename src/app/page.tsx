@@ -73,14 +73,21 @@ export default function HomePage() {
           Unify Supreme Admin governance, Department Leads, Developer/Tester/Meta-Ads squads, Google AdSense traffic tracking, and 50% 6-Month Patent Royalty models under one roof.
         </p>
 
-        {/* Clean Hero Action: ONLY Launch Command Center */}
-        <div className="pt-4 flex items-center justify-center">
+        {/* Hero Actions: Sign In & Request Access */}
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
-            href="/workspace/command-center"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-zinc-950 text-white text-sm font-semibold hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg"
+            href="/login"
+            className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-zinc-950 text-white text-sm font-semibold hover:bg-zinc-800 transition-all shadow-md hover:shadow-lg w-full sm:w-auto"
           >
-            Launch Command Center
+            Sign In to Workspace
             <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/register"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-zinc-300 bg-white text-zinc-800 text-sm font-semibold hover:bg-zinc-50 transition-all shadow-xs w-full sm:w-auto"
+          >
+            <UserCheck className="w-4 h-4 text-amber-600" />
+            Request Access
           </Link>
         </div>
       </section>
