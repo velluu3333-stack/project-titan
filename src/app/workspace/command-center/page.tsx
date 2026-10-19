@@ -26,6 +26,7 @@ import {
   Box,
 } from 'lucide-react';
 import Link from 'next/link';
+import { LivePipelineOrbit } from '@/components/workspace/LivePipelineOrbit';
 
 export default function CommandCenterPage() {
   const { activeOrg, can, currentUser, allProfiles } = useTenant();
@@ -154,6 +155,9 @@ export default function CommandCenterPage() {
           icon={<Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
         />
       </div>
+
+      {/* 🚀 INTERACTIVE LIVE PIPELINE ORBIT ARCHITECTURE (Admin Core + 5 Squad Nodes) */}
+      <LivePipelineOrbit />
 
       {/* MEMBER WORK-BLOCK SIMULATION MATRIX */}
       <Card className="p-5 space-y-4 border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-zinc-900/90 shadow-xs">

@@ -191,3 +191,69 @@ export interface MonetizationMetrics {
     next_billing: string;
   }[];
 }
+
+export type PipelineStage =
+  | 'admin_core'
+  | 'dev_squad'
+  | 'qa_testing'
+  | 'white_coder'
+  | 'research_lab'
+  | 'production_ads';
+
+export interface PipelineTransitionEvent {
+  id: string;
+  projectId: string;
+  projectName: string;
+  fromStage: PipelineStage;
+  toStage: PipelineStage;
+  actorName: string;
+  actorRole: string;
+  timestamp: string;
+  actionNote: string;
+  changesSummary: string;
+}
+
+export interface BroadcastMessage {
+  id: string;
+  orgId: string;
+  title: string;
+  content: string;
+  senderName: string;
+  senderRole: string;
+  urgency: 'critical' | 'high' | 'normal' | 'patent_window';
+  targetSquad: 'all' | 'developers' | 'research' | 'qa' | 'production' | 'white_coders';
+  createdAt: string;
+  acknowledgedBy: string[];
+}
+
+export interface UserInvention {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  patentNumber: string;
+  status: 'active_lockin' | 'filed' | 'review' | 'granted';
+  lockinExpiry: string;
+  grossRevenue: number;
+  royaltyRate: number; // 50%
+  earnedPayout: number;
+  claimedPayout: number;
+  filingDate: string;
+}
+
+export interface SquadPeerProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  role: OrgRole;
+  squad: string;
+  reputationStars: number;
+  patentsCount: number;
+  patents: string[];
+  tasksDone: number;
+  efficiencyScore: string;
+  status: string;
+  bio: string;
+  skills: string[];
+  color: string;
+}

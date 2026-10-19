@@ -12,6 +12,11 @@ import {
   Priority,
   OrgRole,
   UserStatus,
+  PipelineStage,
+  PipelineTransitionEvent,
+  BroadcastMessage,
+  UserInvention,
+  SquadPeerProfile,
 } from '@/types/database';
 import { recordAuditEvent } from '@/lib/audit/logger';
 
@@ -119,7 +124,19 @@ const initialProfiles: Profile[] = [
     created_at: new Date('2026-02-12').toISOString(),
     updated_at: new Date('2026-02-12').toISOString(),
   },
-  // 9. New User Pending Approval (Private software onboarding gate)
+  // 9. White Coder - Core High Performance Systems
+  {
+    id: 'user-white-coder',
+    email: 'kavya.coder@company.internal',
+    full_name: 'Kavya Sengupta (White Coder)',
+    avatar_url: null,
+    is_platform_admin: false,
+    status: 'active',
+    requested_role: 'developer',
+    created_at: new Date('2026-02-14').toISOString(),
+    updated_at: new Date('2026-02-14').toISOString(),
+  },
+  // 10. New User Pending Approval (Private software onboarding gate)
   {
     id: 'user-pending-1',
     email: 'rohit.candidate@external.com',
@@ -218,6 +235,15 @@ const initialMemberships: OrganizationMembership[] = [
     status: 'active',
     created_at: new Date('2026-02-12').toISOString(),
     updated_at: new Date('2026-02-12').toISOString(),
+  },
+  {
+    id: 'mem-white-coder',
+    org_id: 'org-titan-hq',
+    user_id: 'user-white-coder',
+    role: 'developer',
+    status: 'active',
+    created_at: new Date('2026-02-14').toISOString(),
+    updated_at: new Date('2026-02-14').toISOString(),
   },
 ];
 
@@ -1044,4 +1070,450 @@ export const DataRepository = {
     monetizationStore.adSenseTraffic.push(entry);
     return { ...monetizationStore };
   },
+
+  // ==========================================
+  // 1. LIVE PIPELINE ORBIT & SQUAD ENGINE
+  // ==========================================
+  async getPipelineStage(projectId: string): Promise<PipelineStage> {
+    const stages = loadStoredItem<Record<string, PipelineStage>>('titan_pipeline_stages', initialPipelineStages);
+    return stages[projectId] || 'admin_core';
+  },
+
+  async getAllPipelineStages(): Promise<Record<string, PipelineStage>> {
+    return loadStoredItem<Record<string, PipelineStage>>('titan_pipeline_stages', initialPipelineStages);
+  },
+
+  async transitionPipelineStage(params: {
+    projectId: string;
+    projectName: string;
+    toStage: PipelineStage;
+    actorName: string;
+    actorRole: string;
+    actionNote: string;
+    changesSummary: string;
+  }): Promise<{ newStage: PipelineStage; event: PipelineTransitionEvent }> {
+    const stages = loadStoredItem<Record<string, PipelineStage>>('titan_pipeline_stages', initialPipelineStages);
+    const events = loadStoredItem<PipelineTransitionEvent[]>('titan_pipeline_events', initialPipelineEvents);
+
+    const fromStage = stages[params.projectId] || 'admin_core';
+    stages[params.projectId] = params.toStage;
+    persistItem('titan_pipeline_stages', stages);
+
+    const newEvent: PipelineTransitionEvent = {
+      id: `pipe-ev-${Date.now()}`,
+      projectId: params.projectId,
+      projectName: params.projectName,
+      fromStage,
+      toStage: params.toStage,
+      actorName: params.actorName,
+      actorRole: params.actorRole,
+      timestamp: new Date().toISOString(),
+      actionNote: params.actionNote,
+      changesSummary: params.changesSummary,
+    };
+
+    events.unshift(newEvent);
+    persistItem('titan_pipeline_events', events);
+
+    await recordAuditEvent({
+      orgId: 'org-titan-hq',
+      actorId: 'pipeline-engine',
+      eventType: 'project.status_changed',
+      targetResource: 'pipeline',
+      targetId: params.projectId,
+      outcome: 'success',
+      metadata: { fromStage, toStage: params.toStage, actor: params.actorName },
+    });
+
+    return { newStage: params.toStage, event: newEvent };
+  },
+
+  async getPipelineAuditEvents(projectId?: string): Promise<PipelineTransitionEvent[]> {
+    const events = loadStoredItem<PipelineTransitionEvent[]>('titan_pipeline_events', initialPipelineEvents);
+    if (!projectId || projectId === 'all') return events;
+    return events.filter((e) => e.projectId === projectId);
+  },
+
+  // ==========================================
+  // 2. BROADCASTING & EMERGENCY ALERTS ENGINE
+  // ==========================================
+  async getBroadcastMessages(orgId: string): Promise<BroadcastMessage[]> {
+    return loadStoredItem<BroadcastMessage[]>('titan_broadcasts', initialBroadcasts);
+  },
+
+  async createBroadcastMessage(params: {
+    orgId: string;
+    title: string;
+    content: string;
+    senderName: string;
+    senderRole: string;
+    urgency: BroadcastMessage['urgency'];
+    targetSquad: BroadcastMessage['targetSquad'];
+  }): Promise<BroadcastMessage> {
+    const broadcasts = loadStoredItem<BroadcastMessage[]>('titan_broadcasts', initialBroadcasts);
+    const newBroadcast: BroadcastMessage = {
+      id: `bcast-${Date.now()}`,
+      orgId: params.orgId,
+      title: params.title,
+      content: params.content,
+      senderName: params.senderName,
+      senderRole: params.senderRole,
+      urgency: params.urgency,
+      targetSquad: params.targetSquad,
+      createdAt: new Date().toISOString(),
+      acknowledgedBy: [],
+    };
+    broadcasts.unshift(newBroadcast);
+    persistItem('titan_broadcasts', broadcasts);
+
+    await recordAuditEvent({
+      orgId: params.orgId,
+      actorId: 'broadcast-hub',
+      eventType: 'settings.updated',
+      targetResource: 'broadcast',
+      targetId: newBroadcast.id,
+      outcome: 'success',
+      metadata: { title: params.title, urgency: params.urgency },
+    });
+
+    return newBroadcast;
+  },
+
+  async acknowledgeBroadcast(messageId: string, userId: string): Promise<void> {
+    const broadcasts = loadStoredItem<BroadcastMessage[]>('titan_broadcasts', initialBroadcasts);
+    const msg = broadcasts.find((b) => b.id === messageId);
+    if (msg && !msg.acknowledgedBy.includes(userId)) {
+      msg.acknowledgedBy.push(userId);
+      persistItem('titan_broadcasts', broadcasts);
+    }
+  },
+
+  // ==========================================
+  // 3. USER DOSSIER & 50% PATENT INVENTIONS
+  // ==========================================
+  async getUserInventions(userId?: string): Promise<UserInvention[]> {
+    const inventions = loadStoredItem<UserInvention[]>('titan_inventions', initialUserInventions);
+    if (!userId) return inventions;
+    return inventions.filter((inv) => inv.userId === userId || userId === 'user-admin-top');
+  },
+
+  async createInvention(params: {
+    userId: string;
+    title: string;
+    description: string;
+    estimatedRevenue?: number;
+  }): Promise<UserInvention> {
+    const inventions = loadStoredItem<UserInvention[]>('titan_inventions', initialUserInventions);
+    const grossRevenue = params.estimatedRevenue || 25000;
+    const newInvention: UserInvention = {
+      id: `inv-${Date.now()}`,
+      userId: params.userId,
+      title: params.title,
+      description: params.description,
+      patentNumber: `US-PAT-${new Date().getFullYear()}-TITAN-00${inventions.length + 1}`,
+      status: 'active_lockin',
+      lockinExpiry: new Date(Date.now() + 180 * 86400000).toISOString(),
+      grossRevenue,
+      royaltyRate: 50,
+      earnedPayout: Math.round(grossRevenue * 0.5),
+      claimedPayout: 0,
+      filingDate: new Date().toISOString().split('T')[0],
+    };
+
+    inventions.unshift(newInvention);
+    persistItem('titan_inventions', inventions);
+
+    await recordAuditEvent({
+      orgId: 'org-titan-hq',
+      actorId: params.userId,
+      eventType: 'project.created',
+      targetResource: 'patents',
+      targetId: newInvention.id,
+      outcome: 'success',
+      metadata: { title: params.title, patentNumber: newInvention.patentNumber, royaltyRate: 50 },
+    });
+
+    return newInvention;
+  },
+
+  async claimRoyaltyPayout(inventionId: string, amount: number): Promise<UserInvention> {
+    const inventions = loadStoredItem<UserInvention[]>('titan_inventions', initialUserInventions);
+    const target = inventions.find((inv) => inv.id === inventionId);
+    if (!target) throw new Error('Invention not found');
+    target.claimedPayout = Math.min(target.earnedPayout, target.claimedPayout + amount);
+    persistItem('titan_inventions', inventions);
+    return target;
+  },
+
+  // ==========================================
+  // 4. SQUAD PEER INTELLIGENCE & HALL OF FAME
+  // ==========================================
+  async getSquadPeerProfiles(): Promise<SquadPeerProfile[]> {
+    return loadStoredItem<SquadPeerProfile[]>('titan_squad_peers', initialSquadPeers);
+  },
 };
+
+// Helper data persistence
+function loadStoredItem<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function persistItem<T>(key: string, data: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    console.warn(`Failed to persist ${key}:`, err);
+  }
+}
+
+// Initial Pipeline, Broadcast & Invention Stores
+const initialPipelineStages: Record<string, PipelineStage> = {
+  'proj-1': 'dev_squad',
+  'proj-2': 'research_lab',
+  'proj-3': 'qa_testing',
+};
+
+const initialPipelineEvents: PipelineTransitionEvent[] = [
+  {
+    id: 'pipe-ev-1',
+    projectId: 'proj-1',
+    projectName: 'Autonomous Programmatic SEO Engine',
+    fromStage: 'admin_core',
+    toStage: 'dev_squad',
+    actorName: 'Vikramaditya Sharma',
+    actorRole: 'Supreme Admin',
+    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+    actionNote: 'Assigned core architecture and high-throughput rendering to Dev Squad.',
+    changesSummary: 'Dispatched task TITAN-101. Clearance Alpha granted.',
+  },
+  {
+    id: 'pipe-ev-2',
+    projectId: 'proj-1',
+    projectName: 'Autonomous Programmatic SEO Engine',
+    fromStage: 'dev_squad',
+    toStage: 'white_coder',
+    actorName: 'Alex Rivera',
+    actorRole: 'Core Dev Lead',
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    actionNote: 'Completed initial AST transformer, passed to White Coder for memory optimization.',
+    changesSummary: 'Optimized 12 modules. Reduced heap allocations by 42%.',
+  },
+  {
+    id: 'pipe-ev-3',
+    projectId: 'proj-3',
+    projectName: 'Multi-Tenant Cryptographic RLS Proxy',
+    fromStage: 'white_coder',
+    toStage: 'qa_testing',
+    actorName: 'Kavya Sengupta',
+    actorRole: 'White Coder',
+    timestamp: new Date(Date.now() - 1800000).toISOString(),
+    actionNote: 'Zero-latency proxy engine compiled. Passed to QA for pen-testing & fuzzing.',
+    changesSummary: 'Added automated stress test harness with 10k parallel requests.',
+  },
+];
+
+const initialBroadcasts: BroadcastMessage[] = [
+  {
+    id: 'bcast-1',
+    orgId: 'org-titan-hq',
+    title: 'RED ALERT: Urgent Security Audit & Secret Key Rotation',
+    content: 'Supreme Admin has ordered an immediate audit of all staging API tokens and Supabase service keys. All squad leads must acknowledge within 2 hours.',
+    senderName: 'Vikramaditya Sharma',
+    senderRole: 'Supreme Admin',
+    urgency: 'critical',
+    targetSquad: 'all',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    acknowledgedBy: ['user-dev-core', 'user-white-coder'],
+  },
+  {
+    id: 'bcast-2',
+    orgId: 'org-titan-hq',
+    title: '50% Patent Filing Window Open: Q2 Inventions',
+    content: 'Researchers & White Coders: Submit your patent claims today to lock in 6-month royalty pool allocation (50% gross payout to inventor).',
+    senderName: 'Dr. Elena Rostova',
+    senderRole: 'Research Lead',
+    urgency: 'patent_window',
+    targetSquad: 'all',
+    createdAt: new Date(Date.now() - 14400000).toISOString(),
+    acknowledgedBy: ['user-researcher-inv'],
+  },
+  {
+    id: 'bcast-3',
+    orgId: 'org-titan-hq',
+    title: 'Sprint Release: AdSense Programmatic Tool Traffic Spike (+34%)',
+    content: 'Traffic through the programmatic calculators hit 450k pageviews. Meta-Ads team scaling budget to $2k/day.',
+    senderName: 'Sarah Connor',
+    senderRole: 'Production & Meta-Ads',
+    urgency: 'high',
+    targetSquad: 'production',
+    createdAt: new Date(Date.now() - 28800000).toISOString(),
+    acknowledgedBy: [],
+  },
+];
+
+const initialUserInventions: UserInvention[] = [
+  {
+    id: 'inv-1',
+    userId: 'user-admin-top',
+    title: 'Distributed Tenant Isolation Kernel (Titan OS)',
+    description: 'Cryptographic schema-free tenant partition architecture running on edge V8 isolates with hardware-enforced RLS.',
+    patentNumber: 'US-PAT-2026-TITAN-001',
+    status: 'granted',
+    lockinExpiry: '2026-08-30T00:00:00Z',
+    grossRevenue: 84600,
+    royaltyRate: 50,
+    earnedPayout: 42300,
+    claimedPayout: 30000,
+    filingDate: '2026-01-15',
+  },
+  {
+    id: 'inv-2',
+    userId: 'user-researcher-inv',
+    title: 'High-Volume Programmatic SEO Content Synthesizer',
+    description: 'Algorithmic dynamic page synthesis with zero-penalty AdSense compliance and continuous RPM yield optimization.',
+    patentNumber: 'US-PAT-2026-TITAN-002',
+    status: 'active_lockin',
+    lockinExpiry: '2026-09-15T00:00:00Z',
+    grossRevenue: 48200,
+    royaltyRate: 50,
+    earnedPayout: 24100,
+    claimedPayout: 18000,
+    filingDate: '2026-02-10',
+  },
+  {
+    id: 'inv-3',
+    userId: 'user-white-coder',
+    title: 'Zero-Copy Turbopack AST Optimization Kernel',
+    description: 'Compiler pipeline plugin that eliminates redundant JSX subtree traversals during SSR hot updates.',
+    patentNumber: 'US-PAT-2026-TITAN-003',
+    status: 'active_lockin',
+    lockinExpiry: '2026-10-01T00:00:00Z',
+    grossRevenue: 32000,
+    royaltyRate: 50,
+    earnedPayout: 16000,
+    claimedPayout: 10000,
+    filingDate: '2026-02-14',
+  },
+];
+
+const initialSquadPeers: SquadPeerProfile[] = [
+  {
+    id: 'peer-1',
+    fullName: 'Vikramaditya Sharma',
+    email: 'admin.titan@company.internal',
+    role: 'org_owner',
+    squad: 'Supreme Admin Command Station',
+    reputationStars: 5.0,
+    patentsCount: 3,
+    patents: ['Titan OS Isolation Kernel', 'Multi-Tenant Row Encryption', 'Autonomous Royalty Splitter'],
+    tasksDone: 28,
+    efficiencyScore: '99.4%',
+    status: 'Master Authority Active',
+    bio: 'Founder & Supreme Admin. Directs platform architecture, capital allocation, and security enforcement.',
+    skills: ['Architecture', 'Governance', 'RLS Security', 'Strategic Finance'],
+    color: 'from-amber-500 to-amber-700',
+  },
+  {
+    id: 'peer-2',
+    fullName: 'Kavya Sengupta',
+    email: 'kavya.coder@company.internal',
+    role: 'developer',
+    squad: 'White Coder Squad',
+    reputationStars: 4.9,
+    patentsCount: 1,
+    patents: ['Zero-Copy Turbopack AST Kernel'],
+    tasksDone: 24,
+    efficiencyScore: '98.8%',
+    status: 'Refactoring Core Kernel',
+    bio: 'White Coder Specialist. Focuses on low-level system performance, sub-millisecond data pipelines, and algorithms.',
+    skills: ['Rust', 'TypeScript', 'Compiler Design', 'WASM', 'Memory Profiling'],
+    color: 'from-cyan-500 to-cyan-700',
+  },
+  {
+    id: 'peer-3',
+    fullName: 'Alex Rivera',
+    email: 'alex.dev@company.internal',
+    role: 'developer',
+    squad: 'Developer Squad',
+    reputationStars: 4.8,
+    patentsCount: 1,
+    patents: ['Dynamic Hydration Worker'],
+    tasksDone: 22,
+    efficiencyScore: '96.5%',
+    status: 'Coding Next-Gen UI',
+    bio: 'Core frontend and API engineer. Builds responsive modern interfaces, design systems, and client libraries.',
+    skills: ['React', 'Next.js 16', 'Tailwind CSS', 'State Machines'],
+    color: 'from-blue-500 to-blue-700',
+  },
+  {
+    id: 'peer-4',
+    fullName: 'Dr. Elena Rostova',
+    email: 'dr.elena.rostova@company.internal',
+    role: 'research_lead',
+    squad: 'Research & Patent Lab',
+    reputationStars: 4.9,
+    patentsCount: 2,
+    patents: ['6-Month 50% Lock-in Royalty Algorithm', 'Neural Intent Dispatcher'],
+    tasksDone: 19,
+    efficiencyScore: '97.2%',
+    status: 'Filing US Provisional Patent',
+    bio: 'Directs intellectual property, patent documentation, and algorithm research for Titan ventures.',
+    skills: ['IP Law', 'Algorithm Research', 'Statistical Modeling', 'Patents'],
+    color: 'from-purple-500 to-purple-700',
+  },
+  {
+    id: 'peer-5',
+    fullName: 'Tariq Al-Mansoor',
+    email: 'tariq.innovator@company.internal',
+    role: 'researcher',
+    squad: 'Research & Patent Lab',
+    reputationStars: 4.9,
+    patentsCount: 2,
+    patents: ['Programmatic SEO Synthesizer', 'Semantic Cluster Engine'],
+    tasksDone: 18,
+    efficiencyScore: '98.0%',
+    status: '50% Royalty Pool Active',
+    bio: 'Researcher and inventor. Generated $48k+ gross programmatic revenue with active 50% royalty lock-in.',
+    skills: ['Programmatic SEO', 'Data Extraction', 'Monetization Analysis'],
+    color: 'from-violet-500 to-violet-700',
+  },
+  {
+    id: 'peer-6',
+    fullName: 'Priya Patel',
+    email: 'priya.tester@company.internal',
+    role: 'tester',
+    squad: 'User Testing & QA Squad',
+    reputationStars: 4.8,
+    patentsCount: 1,
+    patents: ['Automated RBAC Pen-Testing Framework'],
+    tasksDone: 21,
+    efficiencyScore: '97.6%',
+    status: 'Pen-testing Staging Builds',
+    bio: 'Lead security and quality assurance engineer. Ensures 100% test pass rate and zero cross-tenant leakages.',
+    skills: ['Security Auditing', 'Penetration Testing', 'Playwright', 'Jest'],
+    color: 'from-rose-500 to-rose-700',
+  },
+  {
+    id: 'peer-7',
+    fullName: 'Sarah Connor',
+    email: 'sarah.growth@company.internal',
+    role: 'production',
+    squad: 'Production Studio (Meta-Ads)',
+    reputationStars: 4.7,
+    patentsCount: 1,
+    patents: ['Meta-Ads Dynamic Bid Shifter'],
+    tasksDone: 25,
+    efficiencyScore: '95.4%',
+    status: 'Scaling Ad Campaigns',
+    bio: 'Production lead managing live traffic scaling, Meta-Ads ad sets, and AdSense RPM yield maximization.',
+    skills: ['Meta-Ads', 'Google AdSense', 'Conversion Rate Optimization', 'Media Buying'],
+    color: 'from-emerald-500 to-emerald-700',
+  },
+];
