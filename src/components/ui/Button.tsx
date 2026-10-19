@@ -32,15 +32,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary:
-        'bg-zinc-900 text-white hover:bg-zinc-800 focus-visible:ring-zinc-950 active:bg-zinc-950 shadow-sm',
+        'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white focus-visible:ring-zinc-950 active:bg-zinc-950 dark:active:bg-zinc-200 shadow-xs',
       secondary:
-        'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 focus-visible:ring-zinc-400 active:bg-zinc-300',
+        'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 focus-visible:ring-zinc-400 active:bg-zinc-300 dark:active:bg-zinc-600',
       outline:
-        'border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 focus-visible:ring-zinc-400 active:bg-zinc-100 shadow-xs',
+        'border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 focus-visible:ring-zinc-400 active:bg-zinc-100 dark:active:bg-zinc-800 shadow-xs',
       ghost:
-        'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 focus-visible:ring-zinc-400 active:bg-zinc-200',
+        'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 focus-visible:ring-zinc-400 active:bg-zinc-200 dark:active:bg-zinc-800',
       danger:
-        'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-600 active:bg-rose-800 shadow-sm',
+        'bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500 focus-visible:ring-rose-600 active:bg-rose-800 shadow-xs',
     };
 
     const sizes = {
