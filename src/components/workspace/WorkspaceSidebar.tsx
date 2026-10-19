@@ -36,41 +36,20 @@ export function WorkspaceSidebar() {
     closeMobileSidebar,
   } = useTenant();
 
-  const navGroups = [
+  const primaryNavigation = [
     {
-      label: 'Core Command',
-      items: [
-        { title: 'Command Center', href: '/workspace/command-center', icon: LayoutDashboard },
-        { title: 'Projects', href: '/workspace/projects', icon: FolderKanban },
-        { title: 'Tasks', href: '/workspace/tasks', icon: CheckSquare },
-        {
-          title: 'Team & Hierarchy',
-          href: '/workspace/team',
-          icon: Users,
-          badge: pendingApprovals.length > 0 ? `${pendingApprovals.length} new` : undefined,
-          badgeVariant: 'warning',
-        },
-      ],
+      title: 'Command Orbit Core',
+      href: '/workspace/command-center',
+      icon: LayoutDashboard,
+      badge: 'Live Flow',
+      badgeColor: 'text-rose-400 bg-rose-950/60 border-rose-800/80',
     },
     {
-      label: 'Revenue & IP Engine',
-      items: [
-        { title: 'Earning & Monetization', href: '/workspace/earnings', icon: Coins, badge: '50% Royalty', badgeVariant: 'info' },
-        { title: 'Departments', href: '/workspace/departments', icon: Building2 },
-        { title: 'Research & Patents', href: '/workspace/research', icon: FlaskConical },
-        { title: 'Development Hub', href: '/workspace/development', icon: Code2 },
-        { title: 'Production Studio', href: '/workspace/production', icon: Palette },
-      ],
-    },
-    {
-      label: 'Governance & Security',
-      items: [
-        { title: 'Legal & Secret Docs', href: '/workspace/documents', icon: Lock },
-        { title: 'Communication', href: '/workspace/communication', icon: MessageSquare },
-        { title: 'Reports & Charts', href: '/workspace/reports', icon: BarChart3 },
-        { title: 'Security Center', href: '/workspace/security', icon: ShieldCheck },
-        { title: 'Organization Settings', href: '/workspace/settings', icon: Settings },
-      ],
+      title: 'Squad Intelligence & Gate',
+      href: '/workspace/team',
+      icon: Users,
+      badge: pendingApprovals.length > 0 ? `${pendingApprovals.length} Approval` : 'Dossiers',
+      badgeColor: pendingApprovals.length > 0 ? 'text-amber-400 bg-amber-950/60 border-amber-800' : 'text-blue-400 bg-blue-950/60 border-blue-800',
     },
   ];
 
@@ -140,60 +119,50 @@ export function WorkspaceSidebar() {
           </div>
         </div>
 
-        {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-          {navGroups.map((group, groupIdx) => (
-            <div key={groupIdx} className="space-y-1">
-              <p className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                {group.label}
-              </p>
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={closeMobileSidebar}
-                      className={cn(
-                        'relative flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all group',
-                        isActive
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-semibold shadow-xs'
-                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/80 hover:text-zinc-950 dark:hover:text-zinc-100'
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <Icon
-                          className={cn(
-                            'h-4 w-4 shrink-0 transition-colors',
-                            isActive
-                              ? 'text-white dark:text-zinc-950'
-                              : 'text-zinc-400 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-300'
-                          )}
-                        />
-                        <span className="truncate">{item.title}</span>
-                      </div>
-                      {item.badge && (
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.2 text-[9px] font-bold tracking-wider',
-                            isActive
-                              ? 'bg-zinc-800 text-zinc-200 dark:bg-zinc-300 dark:text-zinc-900'
-                              : item.badgeVariant === 'warning'
-                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
-                              : 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60'
-                          )}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+        {/* Navigation List - Ultra Focused 2 Core Items */}
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
+          <p className="px-2.5 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+            Navigation Core
+          </p>
+          {primaryNavigation.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || (item.href !== '/workspace/command-center' && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={closeMobileSidebar}
+                className={cn(
+                  'relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-all group',
+                  isActive
+                    ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-sm ring-1 ring-zinc-800 dark:ring-white/40'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-950 dark:hover:text-zinc-100'
+                )}
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Icon
+                    className={cn(
+                      'h-4 w-4 shrink-0 transition-colors',
+                      isActive
+                        ? 'text-rose-500 dark:text-rose-600'
+                        : 'text-zinc-400 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-300'
+                    )}
+                  />
+                  <span className="truncate">{item.title}</span>
+                </div>
+                {item.badge && (
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider border',
+                      item.badgeColor
+                    )}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </div>
 
         {/* Super Admin & Security Footer */}
